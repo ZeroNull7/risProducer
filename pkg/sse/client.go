@@ -8,8 +8,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/simplefxn/ripeIngest/gibson/logger"
-	"github.com/simplefxn/ripeIngest/pkg/pb"
+	"github.com/ZeroNull7/risProducer/pkg/logger"
 )
 
 //SSE name constants
@@ -17,6 +16,11 @@ const (
 	eName = "event"
 	dName = "data"
 )
+
+type SSE_RIS struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
+}
 
 var (
 	//ErrNilChan will be returned by Notify if it is passed a nil channel
@@ -64,9 +68,9 @@ func clientConnect(uri string) (*http.Response, error) {
 	return res, nil
 }
 
-func getEvent(br *bufio.Reader) (*pb.RIS_Message, error) {
+func getEvent(br *bufio.Reader) (*SSE_RIS, error) {
 	delim := []byte{':', ' '}
-	currEvent := &pb.RIS_Message{}
+	currEvent := &SSE_RIS{}
 
 	for {
 		bs, err := br.ReadBytes('\n')
@@ -97,7 +101,7 @@ func getEvent(br *bufio.Reader) (*pb.RIS_Message, error) {
 	}
 }
 
-func getEvents(br *bufio.Reader, evCh chan<- *pb.RIS_Message) error {
+func getEvents(br *bufio.Reader, evCh chan<- *SSE_RIS) error {
 
 	for {
 		currEvent, err := getEvent(br)
@@ -109,9 +113,9 @@ func getEvents(br *bufio.Reader, evCh chan<- *pb.RIS_Message) error {
 	}
 }
 
-func Start(ctx context.Context, uri string, evCh chan<- *pb.RIS_Message) {
+func Start(ctx context.Context, uri string, evCh chan<- *SSE_RIS) {
 	// Make a receive channel for getting messages from the http response
-	recvChan := make(chan *pb.RIS_Message)
+	recvChan := make(chan *SSE_RIS)
 	ctxDone := false
 
 	if evCh == nil {

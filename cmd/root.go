@@ -5,11 +5,14 @@ Copyright © 2021 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/ZeroNull7/risProducer/pkg/config"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
 var cfgFile string
 var opts config.Kafka
 
@@ -36,7 +39,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	
+
 	rootCmd.PersistentFlags().StringVar(&opts.Host, "grpc.host", "localhost", "host to connect or bind the socket")
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.ripe.yaml)")
@@ -78,4 +81,3 @@ func initConfig() {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
 }
-
