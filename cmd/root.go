@@ -14,7 +14,7 @@ import (
 )
 
 var cfgFile string
-var opts config.Kafka
+var opts config.Service
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -40,21 +40,27 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&opts.Host, "grpc.host", "localhost", "host to connect or bind the socket")
+	rootCmd.PersistentFlags().StringVar(&opts.Ris.URL, "ris.url", "https://ris-live.ripe.net/v1/stream", "ris url to connect for sse")
+
+	rootCmd.PersistentFlags().StringVar(&opts.Ris.ClientString, "ris.clientstring", "ripe-client", "ris url to connect for sse")
+
+	rootCmd.PersistentFlags().BoolVar(&opts.Ris.LogUnknowns, "ris.logunknowns", true, "log unknown ris messages and types")
+
+	rootCmd.PersistentFlags().StringVar(&opts.Kafka.Host, "kafka.host", "localhost", "host to connect or bind the socket")
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.ripe.yaml)")
 
 	// Kafka.port is the port to listen on for kafka. If not set or zero, don't listen.
-	rootCmd.PersistentFlags().IntVar(&opts.Port, "kafka.port", 9091, "Port to listen on for kafka calls")
+	rootCmd.PersistentFlags().IntVar(&opts.Kafka.Port, "kafka.port", 9091, "Port to listen on for kafka calls")
 
 	// Kafka.Cert is the cert to use if TLS is enabled
-	rootCmd.PersistentFlags().StringVar(&opts.Cert, "kafka.cert", "", "server certificate to use for kafka connections, requires grpc_key, enables TLS")
+	rootCmd.PersistentFlags().StringVar(&opts.Kafka.Cert, "kafka.cert", "", "server certificate to use for kafka connections, requires grpc_key, enables TLS")
 
 	// Kafka.key is the key to use if TLS is enabled
-	rootCmd.PersistentFlags().StringVar(&opts.Key, "kafka.key", "", "server private key to use for kafka connections, requires grpc_cert, enables TLS")
+	rootCmd.PersistentFlags().StringVar(&opts.Kafka.Key, "kafka.key", "", "server private key to use for kafka connections, requires grpc_cert, enables TLS")
 
 	// Kafka.ca	 is the CA to use if TLS is enabled
-	rootCmd.PersistentFlags().StringVar(&opts.CA, "kafka.ca", "", "server CA to use for kafka connections, requires TLS, and enforces client certificate check")
+	rootCmd.PersistentFlags().StringVar(&opts.Kafka.CA, "kafka.ca", "", "server CA to use for kafka connections, requires TLS, and enforces client certificate check")
 
 }
 

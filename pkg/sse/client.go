@@ -113,14 +113,11 @@ func getEvents(br *bufio.Reader, evCh chan<- *SSE_RIS) error {
 	}
 }
 
-func Start(ctx context.Context, uri string, evCh chan<- *SSE_RIS) {
+func Start(ctx context.Context, uri string, cb func(*SSE_RIS)) {
 	// Make a receive channel for getting messages from the http response
 	recvChan := make(chan *SSE_RIS)
 	ctxDone := false
 
-	if evCh == nil {
-		return
-	}
 	// Main goroutine, connect, fecth event , repeat
 	go func() {
 		for {
@@ -156,9 +153,9 @@ func Start(ctx context.Context, uri string, evCh chan<- *SSE_RIS) {
 outside:
 	for {
 		select {
-		// If we receive a message, forward to outside
+		// If we receive a message, call back to user function
 		case ris := <-recvChan:
-			evCh <- ris
+			cb(ris)
 			// If context is done , exit
 		case <-ctx.Done():
 			logger.Log.Info("SSE client receive signal to stop, closing receive channel")
