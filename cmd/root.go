@@ -40,12 +40,12 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&opts.Host, "grpc.host", "localhost", "host to connect or bind the socket")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.risProducer.yaml)")
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.ripe.yaml)")
+	rootCmd.PersistentFlags().StringVar(&opts.Host, "kafka.broker", "cluster-kafka.kafka.svc", "host to connect or bind the socket")
 
 	// Kafka.port is the port to listen on for kafka. If not set or zero, don't listen.
-	rootCmd.PersistentFlags().IntVar(&opts.Port, "kafka.port", 9091, "Port to listen on for kafka calls")
+	rootCmd.PersistentFlags().IntVar(&opts.Port, "kafka.port", 9092, "Port to listen on for kafka calls")
 
 	// Kafka.Cert is the cert to use if TLS is enabled
 	rootCmd.PersistentFlags().StringVar(&opts.Cert, "kafka.cert", "", "server certificate to use for kafka connections, requires grpc_key, enables TLS")
@@ -55,6 +55,9 @@ func init() {
 
 	// Kafka.ca	 is the CA to use if TLS is enabled
 	rootCmd.PersistentFlags().StringVar(&opts.CA, "kafka.ca", "", "server CA to use for kafka connections, requires TLS, and enforces client certificate check")
+
+	// Kafka.verifyssl Optional verify ssl certificates chain
+	rootCmd.PersistentFlags().BoolVar(&opts.VerifySSL, "kafka.verifyssl", true, "Optional verify ssl certificates chain")
 
 }
 
@@ -71,7 +74,7 @@ func initConfig() {
 		// Search config in home directory with name ".ripe" (without extension).
 		viper.AddConfigPath(home)
 		viper.SetConfigType("yaml")
-		viper.SetConfigName(".ripe")
+		viper.SetConfigName(".risProducer")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

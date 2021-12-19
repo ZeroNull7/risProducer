@@ -5,8 +5,12 @@ Copyright © 2021 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
+	"context"
+	"sync"
 
+	"github.com/ZeroNull7/risProducer/pkg/producer"
+	"github.com/ZeroNull7/risProducer/pkg/signals"
+	"github.com/ZeroNull7/risProducer/pkg/sse"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +25,32 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("run called")
+		var wg sync.WaitGroup
+
+		ris := producer.New(opts)
+
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		// Stop channel , catch SIGINT and SIGTERM
+		stopCh := signals.SetupSignalHandler()
+
+		uri := "https://ris-live.ripe.net/v1/stream/?format=sse&client=ripe-client"
+
+		// Open Server side Events for RIS message production
+		wg.Add(1)
+		go func() {
+			sse.Start(ctx, uri, ris)
+			wg.Done()
+		}()
+
+		select {
+		case <-stopCh:
+			cancel()
+			break
+		case <-ctx.Done():
+			break
+		}
 	},
 }
 

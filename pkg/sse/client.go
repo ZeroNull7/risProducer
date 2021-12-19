@@ -8,7 +8,9 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/Shopify/sarama"
 	"github.com/ZeroNull7/risProducer/pkg/logger"
+	"github.com/ZeroNull7/risProducer/pkg/producer"
 )
 
 //SSE name constants
@@ -101,7 +103,7 @@ func getEvent(br *bufio.Reader) (*SSE_RIS, error) {
 	}
 }
 
-func getEvents(br *bufio.Reader, evCh chan<- *SSE_RIS) error {
+func getEvents(br *bufio.Reader, ris *producer.RIS) error {
 
 	for {
 		currEvent, err := getEvent(br)
@@ -109,16 +111,20 @@ func getEvents(br *bufio.Reader, evCh chan<- *SSE_RIS) error {
 			logger.Log.Errorf("Error getting event", err.Error())
 			return err
 		}
-		evCh <- currEvent
+
+		ris.Input() <- &sarama.ProducerMessage{
+			Topic: "ris_update",
+			Value: sarama.ByteEncoder(currEvent.Data),
+		}
+
 	}
 }
 
-func Start(ctx context.Context, uri string, evCh chan<- *SSE_RIS) {
-	// Make a receive channel for getting messages from the http response
-	recvChan := make(chan *SSE_RIS)
+func Start(ctx context.Context, uri string, ris *producer.RIS) {
+
 	ctxDone := false
 
-	if evCh == nil {
+	if ris == nil {
 		return
 	}
 	// Main goroutine, connect, fecth event , repeat
@@ -143,8 +149,8 @@ func Start(ctx context.Context, uri string, evCh chan<- *SSE_RIS) {
 			// Create bufio reader
 			br := bufio.NewReader(res.Body)
 			// Loop for all events and send them to the recv Channel
-			err = getEvents(br, recvChan)
-			// If the goRoutine context is dome
+			err = getEvents(br, ris)
+			// If the goRoutine context is done
 			if err != nil {
 				logger.Log.Info("Error from getting events from connection, skip until next cycle")
 				res.Body.Close()
@@ -153,17 +159,8 @@ func Start(ctx context.Context, uri string, evCh chan<- *SSE_RIS) {
 		}
 	}()
 
-outside:
-	for {
-		select {
-		// If we receive a message, forward to outside
-		case ris := <-recvChan:
-			evCh <- ris
-			// If context is done , exit
-		case <-ctx.Done():
-			logger.Log.Info("SSE client receive signal to stop, closing receive channel")
-			close(recvChan)
-			break outside
-		}
-	}
+	<-ctx.Done()
+	ris.Close()
+	logger.Log.Info("SSE client receive signal to stop, closing receive channel")
+
 }
