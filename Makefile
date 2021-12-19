@@ -3,7 +3,7 @@
 BINARY=ris-producer
 BINARY_DIR=bin
 GOARCH=amd64
-IMAGE_NAME=risProducer
+IMAGE_NAME=ris-producer
 IMAGE_TAG=latest
 REGISTRY=harbor.simplefxn.com
 REGISTRY_PATH=library
@@ -22,23 +22,18 @@ windows: mod
 mod: 
 	go mod tidy
 
-images:
-	podman build -t ${IMAGE_NAME}-client:${IMAGE_TAG} -f Dockerfile.client .
-	podman build -t ${IMAGE_NAME}-server:${IMAGE_TAG} -f Dockerfile.server .
+image:
+	podman build -t ${IMAGE_NAME}:${IMAGE_TAG} -f Dockerfile .
 
-push: images
-	podman tag localhost/${IMAGE_NAME}-server simplefxn/${IMAGE_NAME}-server:${IMAGE_TAG}
-	podman tag localhost/${IMAGE_NAME}-client simplefxn/${IMAGE_NAME}-client:${IMAGE_TAG}
-	podman push simplefxn/${IMAGE_NAME}-client:${IMAGE_TAG} ${REGISTRY}/${REGISTRY_PATH}/${IMAGE_NAME}-client:${IMAGE_TAG}
-	podman push simplefxn/${IMAGE_NAME}-server:${IMAGE_TAG} ${REGISTRY}/${REGISTRY_PATH}/${IMAGE_NAME}-server:${IMAGE_TAG}
+push: image
+	podman tag localhost/${IMAGE_NAME} simplefxn/${IMAGE_NAME}:${IMAGE_TAG}
+	podman push simplefxn/${IMAGE_NAME}:${IMAGE_TAG} ${REGISTRY}/${REGISTRY_PATH}/${IMAGE_NAME}:${IMAGE_TAG}
 
 deploy:
-	kubectl apply -f k8s/server_deployment.yaml
-	kubectl apply -f k8s/client_deployment.yaml
+	kubectl apply -f k8s/deployment.yaml
 
 undeploy:
-	kubectl delete -f k8s/server_deployment.yaml
-	kubectl delete -f k8s/client_deployment.yaml
+	kubectl delete -f k8s/deployment.yaml
 
 clean:
 	${RM} ${BINARY_DIR}/${BINARY}-*

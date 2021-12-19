@@ -64,7 +64,7 @@ to quickly create a Cobra application.`,
 			if err != nil {
 				logger.Log.Errorf(err.Error())
 			} else {
-
+				metrics.RisMessageCounter.Inc()
 				switch kind := string(v.GetStringBytes("type")); {
 				case kind == "UPDATE":
 					if !v.Exists("announcements") && !v.Exists("withdrawals") {

@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ris-producer
+  name: ris-producer
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ris-producer
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ris-producer
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8080"
+        prometheus.io/scrape: "true"
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: ris-producer
+          image: harbor.simplefxn.com/library/ris-producer:latest
+          imagePullPolicy: Always
+          args: ["run"]
+          ports:
+            - containerPort: 8080
+      restartPolicy: Always

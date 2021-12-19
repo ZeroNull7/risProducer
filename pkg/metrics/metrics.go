@@ -50,6 +50,11 @@ var (
 		Name: "ris_producer_update_unknown_events_total",
 		Help: "The total number of unknown update messages received",
 	})
+
+	RisMessageCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ris_producer__events_total",
+		Help: "The total number of messages received",
+	})
 )
 
 func New(conf config.Metrics) *Server {
