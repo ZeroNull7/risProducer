@@ -52,7 +52,7 @@ var (
 	})
 
 	RisMessageCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "ris_producer__events_total",
+		Name: "ris_producer_events_total",
 		Help: "The total number of messages received",
 	})
 )

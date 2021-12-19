@@ -59,7 +59,6 @@ to quickly create a Cobra application.`,
 		risProducer := producer.New(opts.Kafka)
 
 		sse.Start(ctx, uri, func(event *sse.SSE_RIS) {
-			//logger.Log.Infof("Got this back %v", ris.Type)
 			v, err := p.Parse(event.Data)
 			if err != nil {
 				logger.Log.Errorf(err.Error())
