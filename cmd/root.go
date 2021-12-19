@@ -40,18 +40,18 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.risProducer.yaml)")
+
 	rootCmd.PersistentFlags().StringVar(&opts.Ris.URL, "ris.url", "https://ris-live.ripe.net/v1/stream", "ris url to connect for sse")
 
 	rootCmd.PersistentFlags().StringVar(&opts.Ris.ClientString, "ris.clientstring", "ripe-client", "ris url to connect for sse")
 
 	rootCmd.PersistentFlags().BoolVar(&opts.Ris.LogUnknowns, "ris.logunknowns", true, "log unknown ris messages and types")
 
-	rootCmd.PersistentFlags().StringVar(&opts.Kafka.Host, "kafka.host", "localhost", "host to connect or bind the socket")
+	rootCmd.PersistentFlags().StringVar(&opts.Kafka.Host, "kafka.broker", "cluster-kafka.kafka.svc", "host to connect or bind the socket")
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.ripe.yaml)")
-
-	// Kafka.port is the port to listen on for kafka. If not set or zero, don't listen.
-	rootCmd.PersistentFlags().IntVar(&opts.Kafka.Port, "kafka.port", 9091, "Port to listen on for kafka calls")
+	// Kafka.port Port use to connect to the kafka broker
+	rootCmd.PersistentFlags().IntVar(&opts.Kafka.Port, "kafka.port", 9092, "Port used to connect to the broker service")
 
 	// Kafka.Cert is the cert to use if TLS is enabled
 	rootCmd.PersistentFlags().StringVar(&opts.Kafka.Cert, "kafka.cert", "", "server certificate to use for kafka connections, requires grpc_key, enables TLS")
@@ -61,6 +61,17 @@ func init() {
 
 	// Kafka.ca	 is the CA to use if TLS is enabled
 	rootCmd.PersistentFlags().StringVar(&opts.Kafka.CA, "kafka.ca", "", "server CA to use for kafka connections, requires TLS, and enforces client certificate check")
+
+	// Kafka.verifyssl Optional verify ssl certificates chain
+	rootCmd.PersistentFlags().BoolVar(&opts.Kafka.VerifySSL, "kafka.verifyssl", true, "Optional verify ssl certificates chain")
+
+	// Enable prometheus stats
+	rootCmd.PersistentFlags().BoolVar(&opts.Metrics.Enable, "metrics.enable", true, "enable prometheus metrics")
+
+	// Prometheus metrics port to listen to
+	rootCmd.PersistentFlags().IntVar(&opts.Metrics.Port, "metrics.port", 8080, "Port to liste for prometheus metrics scraping")
+
+	rootCmd.PersistentFlags().StringVar(&opts.Metrics.Path, "metrics.path", "/metrics", "Path for prometheus metrics scraping ")
 
 }
 
@@ -77,7 +88,7 @@ func initConfig() {
 		// Search config in home directory with name ".ripe" (without extension).
 		viper.AddConfigPath(home)
 		viper.SetConfigType("yaml")
-		viper.SetConfigName(".ripe")
+		viper.SetConfigName(".risProducer")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

@@ -8,7 +8,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Shopify/sarama"
 	"github.com/ZeroNull7/risProducer/pkg/logger"
+	"github.com/ZeroNull7/risProducer/pkg/metrics"
+	"github.com/ZeroNull7/risProducer/pkg/producer"
+	"github.com/ZeroNull7/risProducer/pkg/signals"
 	"github.com/ZeroNull7/risProducer/pkg/sse"
 	"github.com/spf13/cobra"
 	"github.com/valyala/fastjson"
@@ -25,17 +29,38 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		var p fastjson.Parser
+		var server *metrics.Server
+
 		logger.RegisterLog()
 
 		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
+
+		// Stop channel , catch SIGINT and SIGTERM
+		sigStop := signals.SetupSignalHandler()
+
+		// Prometheus metrics
+		if opts.Metrics.Enable {
+			server := metrics.New(opts.Metrics)
+			go server.ListenAndServe()
+		}
+
+		go func() {
+			<-sigStop
+			if server != nil {
+				shutCtx := context.Background()
+				server.Shutdown(shutCtx)
+			}
+			cancel()
+		}()
 
 		uri := fmt.Sprintf("%s/?format=sse&client%s", opts.Ris.URL, opts.Ris.ClientString)
+		risProducer := producer.New(opts.Kafka)
 
-		var p fastjson.Parser
-
-		sse.Start(ctx, uri, func(ris *sse.SSE_RIS) {
+		sse.Start(ctx, uri, func(event *sse.SSE_RIS) {
 			//logger.Log.Infof("Got this back %v", ris.Type)
-			v, err := p.Parse(ris.Data)
+			v, err := p.Parse(event.Data)
 			if err != nil {
 				logger.Log.Errorf(err.Error())
 			} else {
@@ -44,20 +69,50 @@ to quickly create a Cobra application.`,
 				case kind == "UPDATE":
 					if !v.Exists("announcements") && !v.Exists("withdrawals") {
 						if opts.Ris.LogUnknowns {
-							logger.Log.Infof("Unknown update %v", ris.Data)
+							logger.Log.Infof("Unknown update %v", event.Data)
+						}
+						metrics.RisUpdateUnknownCounter.Inc()
+					} else if v.Exists("announcements") {
+						metrics.RisUpdateAnnouncementsCounter.Inc()
+						risProducer.Input() <- &sarama.ProducerMessage{
+							Topic: "ris-update-announcement",
+							Value: sarama.ByteEncoder(event.Data),
+						}
+					} else if v.Exists("withdrawals") {
+						metrics.RisUpdateWithdrawalsCounter.Inc()
+						risProducer.Input() <- &sarama.ProducerMessage{
+							Topic: "ris-update-withdrawal",
+							Value: sarama.ByteEncoder(event.Data),
 						}
 					}
 				case kind == "RIS_PEER_STATE":
-					break
+					metrics.RisPeerStateCounter.Inc()
+					risProducer.Input() <- &sarama.ProducerMessage{
+						Topic: "ris-peer-state",
+						Value: sarama.ByteEncoder(event.Data),
+					}
 				case kind == "OPEN":
-					break
+					metrics.RisOpenCounter.Inc()
+					risProducer.Input() <- &sarama.ProducerMessage{
+						Topic: "ris-open",
+						Value: sarama.ByteEncoder(event.Data),
+					}
 				case kind == "NOTIFICATION":
-					break
+					metrics.RisNotificationCounter.Inc()
+					risProducer.Input() <- &sarama.ProducerMessage{
+						Topic: "ris-notification",
+						Value: sarama.ByteEncoder(event.Data),
+					}
 				case kind == "":
-					break
+					metrics.RisUnknownsCounter.Inc()
+					risProducer.Input() <- &sarama.ProducerMessage{
+						Topic: "ris-unknowns",
+						Value: sarama.ByteEncoder(event.Data),
+					}
 				default:
+					metrics.RisUnknownsCounter.Inc()
 					if opts.Ris.LogUnknowns {
-						logger.Log.Infof("Unknown event \"%s\"\n %v", kind, ris.Data)
+						logger.Log.Infof("Unknown event \"%s\"\n %v", kind, event.Data)
 					}
 
 				}
